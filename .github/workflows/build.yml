@@ -1,0 +1,49 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-release:
+    name: Build and Release for Linux and macOS
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '^1.22' # Specify the Go version
+
+      - name: Build binary ${{ matrix.goos }} ${{ matrix.goarch }}
+        run: |
+          env GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o aws-iam-rotate-${{ matrix.goos }}-${{ matrix.goarch }}
+      - name: Move binaries to a separate directory
+        run: |
+          mkdir -p release
+          mv aws-iam-rotate-${{ matrix.goos }}-${{ matrix.goarch }} release/
+      - name: Create Tag
+        run: |
+          TAG="release-$(date +'%Y%m%d')-$(git rev-parse --short HEAD)"
+          git tag $TAG
+          echo "TAG=$TAG" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push Tag
+        run: git push origin ${{ env.TAG }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          files: release/*
