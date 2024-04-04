@@ -64,7 +64,6 @@ func main() {
 }
 
 func createAccessKey(client *iam.IAM) (string, error) {
-	// Create a new access key
 	result, err := client.CreateAccessKey(&iam.CreateAccessKeyInput{})
 	if err != nil {
 		fmt.Println("Error creating access key:", err)
@@ -74,16 +73,8 @@ func createAccessKey(client *iam.IAM) (string, error) {
 	fmt.Printf("New Key:        %s\n", *result.AccessKey.AccessKeyId)
 	fmt.Printf("Secret:         %s\n", *result.AccessKey.SecretAccessKey)
 
-	// Prompt to update the credentials file
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("\nUpdate credentials file with new key (y/n)? Warning: File contents will be overwritten! ")
-	response, _ := reader.ReadString('\n')
-	response = strings.TrimSpace(response)
-
-	if strings.ToLower(response) != "y" {
-		fmt.Println("\nYou answered 'n' or provided incorrect input, bye!")
-		return *result.AccessKey.AccessKeyId, nil
-	}
+	// Assume "yes" for updating credentials file in a non-interactive mode suitable for cron jobs
+	fmt.Println("\nAutomatically updating credentials file with new key.")
 
 	usr, err := user.Current()
 	if err != nil {
@@ -116,7 +107,7 @@ func createAccessKey(client *iam.IAM) (string, error) {
 		return "", err
 	}
 
-	file.Close()
+	file.Close() // Make sure to close the file after reading
 
 	// Write the updated content back to the credentials file
 	updatedContent := strings.Join(lines, "\n")
